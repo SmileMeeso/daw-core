@@ -17,7 +17,7 @@ import type {
   MidiNoteInput,
   TrackInput,
   TrackItemInput
-} from "./types";
+} from "../types/daw";
 
 type EntityLocation =
   | { kind: "clip"; clip: TrackItem; clipIndex: number; track: Track; trackIndex: number }

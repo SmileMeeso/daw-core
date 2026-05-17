@@ -1,3 +1,4 @@
+export type * from "./daw";
 export type * from "./audio";
 export type * from "./midi";
 export type {

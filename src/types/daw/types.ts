@@ -1,11 +1,11 @@
-import type { AudioClip } from "../types/audio/clips";
-import type { AudioEffect } from "../types/audio/effects";
-import type { AudioSource } from "../types/audio/sources";
-import type { MidiClip } from "../types/midi/clip";
-import type { MidiEffect } from "../types/midi/effects";
-import type { MidiNote } from "../types/midi/note";
-import type { MusicalPosition } from "../types/timeline";
-import type { Track, TrackKind, TrackItem } from "../types/track";
+import type { AudioClip } from "../audio/clips";
+import type { AudioEffect } from "../audio/effects";
+import type { AudioSource } from "../audio/sources";
+import type { MidiClip } from "../midi/clip";
+import type { MidiEffect } from "../midi/effects";
+import type { MidiNote } from "../midi/note";
+import type { MusicalPosition } from "../timeline";
+import type { Track, TrackKind, TrackItem } from "../track";
 
 export type MidiNoteInput = Partial<MidiNote>;
 
