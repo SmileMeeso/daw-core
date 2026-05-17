@@ -1,10 +1,6 @@
-export type {
-  AudioTimelinePosition,
-  BeatsPerMinute,
-  SampleRate,
-  TimeSignature,
-  TransportState
-} from "./types";
+export * from "./types";
+export * from "./timeline";
+export * from "./track";
 
 export const DEFAULT_SAMPLE_RATE = 44_100;
 

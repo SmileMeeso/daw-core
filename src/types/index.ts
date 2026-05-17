@@ -1,7 +1,20 @@
+export type * from "./audio";
+export type * from "./midi";
 export type {
   AudioTimelinePosition,
+  Bar,
+  Beat,
   BeatsPerMinute,
+  DurationBeats,
+  MusicalPosition,
+  Pitch,
   SampleRate,
+  SubBeat,
   TimeSignature,
-  TransportState
-} from "./audio";
+  TransportState,
+  Velocity,
+  durationBeats,
+  pitch,
+  velocity
+} from "./timeline";
+export type * from "./track";
