@@ -1,15 +1,14 @@
-import type {
-  DurationBeats,
-  MusicalPosition,
-  Pitch,
-  Velocity,
-} from "../../timeline";
+import type { MusicalPosition } from "../../timeline";
+import type { MidiEffect } from "../effects";
+import type { MidiNote } from "../note";
 
-export type { MidiEffect } from "../effects";
-
-export type MidiNote = {
+export type MidiClip = {
+  id: string;
+  type: "midi-clip";
   position: MusicalPosition;
-  pitch: Pitch;
-  velocity: Velocity;
-  durationBeats: DurationBeats;
+
+  notes: MidiNote[];
+
+  muted?: boolean;
+  midiEffects?: MidiEffect[]; // clip effects
 };

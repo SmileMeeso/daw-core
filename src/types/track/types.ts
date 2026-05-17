@@ -1,10 +1,10 @@
 import type { AudioClip } from "../audio/clips";
 import type { AudioEffect } from "../audio/effects";
-import type { MidiEffect, MidiNote } from "../midi";
+import type { MidiClip, MidiEffect } from "../midi";
 
 export type TrackKind = "midi" | "audio" | "hybrid" | "bus" | "master";
 
-export type TrackItem = MidiNote | AudioClip;
+export type TrackItem = MidiClip | AudioClip;
 
 export type Track = {
   id: string;
