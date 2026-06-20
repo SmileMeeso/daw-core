@@ -31,3 +31,10 @@ export type {
   CreateCompressorNode,
   CreateCompressorNodeOptions
 } from "./effects/createCompressorNode";
+
+export type {
+  AudioSourceBufferMap,
+  DAWPlayback,
+  LoadAudioSource,
+  PlayDAWStateOptions
+} from "./playDAWState";

@@ -6,6 +6,7 @@ import type { MidiEffect } from "../types/midi/effects";
 import type { MidiNote } from "../types/midi/note";
 import type { MusicalPosition } from "../types/timeline";
 import type { Track, TrackItem, TrackKind } from "../types/track";
+import { playDAWState } from "../audio/playDAWState";
 import type {
   AudioClipInput,
   AudioSourceInput,
@@ -19,6 +20,7 @@ import type {
   TrackInput,
   TrackItemInput
 } from "../types/daw";
+import type { DAWPlayback, PlayDAWStateOptions } from "../types/audio";
 
 type EntityLocation =
   | { kind: "clip"; clip: TrackItem; clipIndex: number; track: Track }
@@ -91,6 +93,14 @@ export class DAW {
     operator(this);
 
     return this;
+  }
+
+  /**
+   * Renders the current project state into a Web Audio graph and starts playback.
+   * 현재 프로젝트 상태를 Web Audio 그래프로 렌더링하고 재생을 시작함.
+   */
+  play(options: PlayDAWStateOptions = {}): Promise<DAWPlayback> {
+    return playDAWState(this.getState(), options);
   }
 
   /**
