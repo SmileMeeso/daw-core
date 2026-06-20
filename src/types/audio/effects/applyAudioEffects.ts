@@ -4,6 +4,8 @@ export interface ApplyAudioEffectsOptions {
   audioContext: BaseAudioContext;
   source: AudioNode;
   effects: readonly AudioEffect[];
+  bpm?: number;
+  startTime?: number;
 }
 
 export interface ApplyAudioEffectsResult {

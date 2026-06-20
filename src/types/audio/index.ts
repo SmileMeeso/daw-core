@@ -4,8 +4,16 @@ export type { AudioClip } from "./clips/types";
 
 export type {
   AudioEffect,
+  AudioAutomationCurve,
+  AudioAutomationValueAtBeat,
+  AudioAutomationValueAtTime,
+  AudioBeatFunctionAutomation,
+  AudioCurveAutomation,
+  AudioParamAutomation,
+  AudioParamValue,
   CompressorAudioEffect,
-  FilterAudioEffect
+  FilterAudioEffect,
+  AudioTimeFunctionAutomation
 } from "./effects/types";
 
 export type {

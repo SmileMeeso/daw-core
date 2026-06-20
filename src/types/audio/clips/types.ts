@@ -1,3 +1,4 @@
+import type { AutomatableNumber } from "../../automation";
 import type { MusicalPosition } from "../../timeline";
 import type { AudioEffect } from "../effects";
 
@@ -6,13 +7,13 @@ export type AudioClip = {
   type: "audio-clip";
   sourceId: string;
   position: MusicalPosition;
-  sourceStartSec: number;
-  sourceDurationSec: number;
-  gain?: number;
-  pan?: number;
-  playbackRate?: number;
-  fadeInSec?: number;
-  fadeOutSec?: number;
+  sourceStartSec: AutomatableNumber;
+  sourceDurationSec: AutomatableNumber;
+  gain?: AutomatableNumber;
+  pan?: AutomatableNumber;
+  playbackRate?: AutomatableNumber;
+  fadeInSec?: AutomatableNumber;
+  fadeOutSec?: AutomatableNumber;
   muted?: boolean;
   audioEffects?: AudioEffect[]; // clip effects
 };

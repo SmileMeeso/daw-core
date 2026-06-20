@@ -1,4 +1,4 @@
-import type { Track, TrackKind } from "../types";
+import type { AutomatableNumber, Track, TrackKind } from "../types";
 
 const trackKinds: readonly TrackKind[] = ["midi", "audio", "hybrid", "bus", "master"];
 
@@ -20,8 +20,24 @@ export function isTrack(value: unknown): value is Track {
     typeof candidate.order === "number" &&
     typeof candidate.muted === "boolean" &&
     typeof candidate.solo === "boolean" &&
-    typeof candidate.volume === "number" &&
-    typeof candidate.pan === "number" &&
+    isAutomatableNumber(candidate.volume) &&
+    isAutomatableNumber(candidate.pan) &&
     Array.isArray(candidate.items)
+  );
+}
+
+function isAutomatableNumber(value: unknown): value is AutomatableNumber {
+  if (typeof value === "number") {
+    return true;
+  }
+
+  if (typeof value !== "object" || value === null || !("kind" in value)) {
+    return false;
+  }
+
+  return (
+    value.kind === "beat-function" ||
+    value.kind === "curve" ||
+    value.kind === "time-function"
   );
 }

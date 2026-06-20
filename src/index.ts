@@ -1,3 +1,4 @@
+export * from "./audio";
 export * from "./daw";
 export * from "./types";
 export * from "./timeline";

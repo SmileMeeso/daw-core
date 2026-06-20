@@ -27,6 +27,8 @@ export type TrackInput = Partial<Omit<Track, "items">> & {
 
 export type EffectInput = AudioEffect | MidiEffect | number;
 
+export type DAWOperator<TDAW> = (daw: TDAW) => void;
+
 export type DAWOptions = {
   id?: string;
   source?: AudioSourceInput | readonly AudioSourceInput[];

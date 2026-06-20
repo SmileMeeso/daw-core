@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { DAW } from "../src";
-import type { AudioClip, AudioEffect, MidiClip } from "../src";
+import {
+  DAW,
+  clip,
+  createDAW,
+  effect,
+  note,
+  renderAudioAutomationCurve,
+  remove,
+  track as trackOps,
+  update
+} from "../src";
+import type { AudioClip, AudioEffect, AudioParamAutomation, MidiClip } from "../src";
 
 const position = {
   bar: 1,
@@ -34,14 +44,14 @@ describe("DAW", () => {
     const daw = new DAW();
 
     daw
-      .addTrack("audio")
-      .addClip(audioClip("clip-a"))
-      .addClip(audioClip("clip-b"))
-      .setEffect(50);
+      .call(trackOps.add("audio"))
+      .call(clip.add(audioClip("clip-a")))
+      .call(clip.add(audioClip("clip-b")))
+      .call(effect.add(50));
 
     const clipId = daw.getId();
 
-    daw.update(clipId, { gain: 0.5 }).remove(clipId);
+    daw.call(update(clipId, { gain: 0.5 })).call(remove(clipId));
 
     const [track] = daw.getTracks();
 
@@ -50,14 +60,14 @@ describe("DAW", () => {
   });
 
   it("chains midi clip and note edits", () => {
-    const daw = new DAW();
+    const daw = createDAW();
 
     daw
-      .addTrack("midi")
-      .addClip(midiClip("clip-a"))
-      .addNode()
-      .setPitch(100)
-      .addClip(midiClip("clip-b"));
+      .call(trackOps.add("midi"))
+      .call(clip.add(midiClip("clip-a")))
+      .call(note.add())
+      .call(note.pitch(100))
+      .call(clip.add(midiClip("clip-b")));
 
     const [track] = daw.getTracks();
     const firstClip = track?.items[0] as MidiClip;
@@ -68,20 +78,19 @@ describe("DAW", () => {
   });
 
   it("chains master track volume and effects", () => {
-    const eq: AudioEffect = {
-      frequency: 1_000,
-      filterType: "lowpass",
-      type: "filter"
-    };
-    const compressor: AudioEffect = {
+    const eq: AudioEffect = effect.lowpass(1_000);
+    const compressor: AudioEffect = effect.compressor({
       ratio: 4,
-      threshold: -18,
-      type: "compressor"
-    };
+      threshold: -18
+    });
 
-    const daw = new DAW();
+    const daw = createDAW();
 
-    daw.addTrack("master").setVolume(50).setEffect(eq).setEffect(compressor);
+    daw
+      .call(trackOps.add("master"))
+      .call(trackOps.volume(50))
+      .call(effect.add(eq))
+      .call(effect.add(compressor));
 
     const [track] = daw.getTracks();
 
@@ -89,8 +98,135 @@ describe("DAW", () => {
     expect(track?.audioEffects).toEqual([eq, compressor]);
   });
 
+  it("creates common audio effects", () => {
+    expect(effect.lowpass(2_000, { qFactor: 0.7 })).toEqual({
+      filterType: "lowpass",
+      frequency: 2_000,
+      qFactor: 0.7,
+      type: "filter"
+    });
+    expect(effect.highpass(120)).toEqual({
+      filterType: "highpass",
+      frequency: 120,
+      type: "filter"
+    });
+    expect(effect.eq(500, "highpass")).toEqual({
+      filterType: "highpass",
+      frequency: 500,
+      type: "filter"
+    });
+    expect(effect.limiter(-0.5)).toEqual({
+      attack: 0.003,
+      ratio: 20,
+      release: 0.1,
+      threshold: -0.5,
+      type: "compressor"
+    });
+  });
+
+  it("creates beat-based curved audio effect automation", () => {
+    const frequency = effect.curveDownFromBeat(2_000, 200, {
+      durationBeats: 4,
+      sampleCount: 5,
+      startBeat: 8
+    });
+    const rendered = renderAudioAutomationCurve(frequency, { bpm: 120 });
+
+    expect(effect.lowpass(frequency)).toEqual({
+      filterType: "lowpass",
+      frequency,
+      type: "filter"
+    });
+    expect(rendered.startSec).toBe(4);
+    expect(rendered.durationSec).toBe(2);
+    expect(Array.from(rendered.values)).toEqual([
+      2_000,
+      1_718.75,
+      1_100,
+      481.25,
+      200
+    ]);
+  });
+
+  it("accepts inline compressor automation without calling timeFunction", () => {
+    const compressor = effect.compressor({
+      ratio: 4,
+      threshold: [
+        (_timeSec, progress) => -12 + (-36 - -12) * progress,
+        {
+          curve: "smoothstep",
+          durationSec: 2,
+          sampleCount: 3,
+          startSec: 8
+        }
+      ]
+    });
+
+    expect(compressor.threshold).toMatchObject({
+      durationSec: 2,
+      kind: "time-function",
+      startSec: 8
+    });
+
+    if (typeof compressor.threshold === "number") {
+      throw new Error("Expected automated threshold.");
+    }
+
+    const rendered = renderAudioAutomationCurve(compressor.threshold);
+
+    expect(Array.from(rendered.values)).toEqual([-12, -24, -36]);
+  });
+
+  it("accepts inline automation in track clip and note operators", () => {
+    const daw = createDAW();
+
+    daw
+      .call(trackOps.add("audio"))
+      .call(trackOps.volume([
+        (_timeSec, progress) => 0.25 + 0.75 * progress,
+        {
+          durationSec: 2,
+          sampleCount: 3,
+          startSec: 1
+        }
+      ]))
+      .call(clip.add(audioClip("clip-a")))
+      .call(clip.gain({
+        curve: "smoothstep",
+        durationSec: 1,
+        sampleCount: 3,
+        startSec: 0,
+        valueAt: (_timeSec, progress) => progress
+      }));
+
+    const [audioTrack] = daw.getTracks();
+    const [audioItem] = audioTrack?.items ?? [];
+    const audio = audioItem as AudioClip;
+
+    expectAutomationValues(audioTrack?.volume, [0.25, 0.625, 1]);
+    expectAutomationValues(audio.gain, [0, 0.5, 1]);
+
+    daw
+      .call(trackOps.add("midi"))
+      .call(clip.add(midiClip("clip-b")))
+      .call(note.add())
+      .call(note.pitch({
+        curve: "smoothstep",
+        durationBeats: 2,
+        sampleCount: 3,
+        startBeat: 4,
+        valueAtBeat: (_beat, progress) => 60 + 12 * progress
+      }));
+
+    const [, midiTrack] = daw.getTracks();
+    const [midiItem] = midiTrack?.items ?? [];
+    const midi = midiItem as MidiClip;
+
+    expectAutomationValues(midi.notes[0]?.pitch, [60, 66, 72]);
+  });
+
   it("normalizes constructor track input with midi note aliases", () => {
-    const daw = new DAW({
+    const daw = createDAW({
       track: {
         items: [
           {
@@ -126,3 +262,16 @@ describe("DAW", () => {
     expect(midi.notes[0]?.durationInBeats).toBe(2);
   });
 });
+
+function expectAutomationValues(
+  value: AudioClip["gain"],
+  expected: readonly number[]
+): void {
+  if (typeof value === "number" || value === undefined) {
+    throw new Error("Expected automated value.");
+  }
+
+  const rendered = renderAudioAutomationCurve(value as AudioParamAutomation);
+
+  expect(Array.from(rendered.values)).toEqual(expected);
+}
