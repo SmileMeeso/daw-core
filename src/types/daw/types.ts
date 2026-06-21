@@ -5,7 +5,7 @@ import type { MidiClip } from "../midi/clip";
 import type { MidiEffect } from "../midi/effects";
 import type { MidiNote } from "../midi/note";
 import type { MusicalPosition } from "../timeline";
-import type { Track, TrackKind, TrackItem } from "../track";
+import type { AudioBlock, Block, MidiBlock, Track, TrackKind, TrackItem } from "../track";
 
 export type MidiNoteInput = Partial<MidiNote>;
 
@@ -21,7 +21,16 @@ export type TrackItemInput = AudioClipInput | MidiClipInput;
 
 export type AudioSourceInput = Partial<AudioSource>;
 
-export type TrackInput = Partial<Omit<Track, "items">> & {
+export type MidiBlockInput = Partial<Omit<MidiBlock, "notes">> & {
+  notes?: readonly MidiNoteInput[];
+};
+
+export type AudioBlockInput = Partial<AudioBlock>;
+
+export type BlockInput = AudioBlockInput | MidiBlockInput;
+
+export type TrackInput = Partial<Omit<Track, "items" | "Block">> & {
+  Block?: readonly BlockInput[];
   items?: readonly TrackItemInput[];
 };
 
@@ -56,6 +65,7 @@ export type {
   AudioClip,
   AudioEffect,
   AudioSource,
+  Block,
   MidiClip,
   MidiEffect,
   MidiNote,

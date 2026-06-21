@@ -261,6 +261,73 @@ describe("DAW", () => {
     expect(midi.notes[0]?.pitch).toBe(10);
     expect(midi.notes[0]?.durationInBeats).toBe(2);
   });
+
+  it("normalizes track blocks", () => {
+    const daw = createDAW({
+      tracks: [
+        {
+          Block: [
+            {
+              endBeat: 8,
+              loop: true,
+              notes: [
+                {
+                  durationInBeats: 2,
+                  pitch: 64
+                }
+              ],
+              startBeat: 4,
+              title: "Hook"
+            }
+          ],
+          kind: "midi"
+        },
+        {
+          Block: [
+            {
+              audioFile: {
+                fileName: "loop.wav",
+                sourceId: "source-loop",
+                uri: "/audio/loop.wav"
+              },
+              endBeat: 12,
+              loop: false,
+              sourceEndSec: 3,
+              sourceStartSec: 1,
+              startBeat: 0,
+              title: "Drum Loop"
+            }
+          ],
+          kind: "audio"
+        }
+      ]
+    });
+
+    const [midiTrack, audioTrack] = daw.getTracks();
+
+    expect(midiTrack?.Block[0]).toMatchObject({
+      endBeat: 8,
+      loop: true,
+      startBeat: 4,
+      title: "Hook",
+      type: "midi-block"
+    });
+    expect(midiTrack?.Block[0]?.type === "midi-block" ? midiTrack.Block[0].notes[0]?.pitch : undefined).toBe(64);
+    expect(audioTrack?.Block[0]).toMatchObject({
+      audioFile: {
+        fileName: "loop.wav",
+        sourceId: "source-loop",
+        uri: "/audio/loop.wav"
+      },
+      endBeat: 12,
+      loop: false,
+      sourceEndSec: 3,
+      sourceStartSec: 1,
+      startBeat: 0,
+      title: "Drum Loop",
+      type: "audio-block"
+    });
+  });
 });
 
 function expectAutomationValues(

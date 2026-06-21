@@ -5,16 +5,19 @@ import type { MidiClip } from "../types/midi/clip";
 import type { MidiEffect } from "../types/midi/effects";
 import type { MidiNote } from "../types/midi/note";
 import type { MusicalPosition } from "../types/timeline";
-import type { Track, TrackItem, TrackKind } from "../types/track";
+import type { AudioBlock, Block, MidiBlock, Track, TrackItem, TrackKind } from "../types/track";
 import { playDAWState } from "../audio/playDAWState";
 import type {
   AudioClipInput,
+  AudioBlockInput,
   AudioSourceInput,
+  BlockInput,
   DAWOperator,
   DAWOptions,
   DAWState,
   DAWUpdateInput,
   EffectInput,
+  MidiBlockInput,
   MidiClipInput,
   MidiNoteInput,
   TrackInput,
@@ -633,6 +636,7 @@ function applyDefinedPatch<T extends object>(target: T, patch: object): void {
   for (const [key, value] of Object.entries(patch)) {
     if (
       value === undefined ||
+      key === "Block" ||
       key === "items" ||
       key === "MidiNote" ||
       key === "midiNotes" ||
@@ -646,6 +650,10 @@ function applyDefinedPatch<T extends object>(target: T, patch: object): void {
 }
 
 function applyTrackPatch(track: Track, patch: TrackInput): void {
+  if (patch.Block !== undefined) {
+    track.Block = patch.Block.map((block) => normalizeBlock(block, track.kind));
+  }
+
   if (patch.items !== undefined) {
     track.items = patch.items.map((item) => normalizeTrackItem(item, track.kind));
   }
@@ -722,6 +730,22 @@ function inferTrackKindFromClip(input: TrackItemInput): TrackKind {
   return inferClipType(input, "audio") === "midi-clip" ? "midi" : "audio";
 }
 
+function inferBlockType(input: BlockInput, trackKind: TrackKind): Block["type"] {
+  if (input.type !== undefined) {
+    return input.type;
+  }
+
+  if (hasKey(input, "notes")) {
+    return "midi-block";
+  }
+
+  if (hasKey(input, "audioFile") || hasKey(input, "sourceStartSec") || hasKey(input, "sourceEndSec")) {
+    return "audio-block";
+  }
+
+  return trackKind === "midi" ? "midi-block" : "audio-block";
+}
+
 function isMidiEffect(effect: EffectInput): effect is MidiEffect {
   return (
     typeof effect === "object" &&
@@ -789,6 +813,47 @@ function normalizeAudioSource(input: AudioSourceInput = {}): AudioSource {
   return source;
 }
 
+function normalizeBlock(input: BlockInput = {}, trackKind: TrackKind): Block {
+  const type = inferBlockType(input, trackKind);
+
+  if (type === "midi-block") {
+    return normalizeMidiBlock(input as MidiBlockInput);
+  }
+
+  return normalizeAudioBlock(input as AudioBlockInput);
+}
+
+function normalizeMidiBlock(input: MidiBlockInput = {}): MidiBlock {
+  const startBeat = input.startBeat ?? 0;
+
+  return {
+    endBeat: Math.max(startBeat, input.endBeat ?? startBeat + 4),
+    id: input.id ?? createId("midi-block"),
+    loop: input.loop ?? false,
+    notes: (input.notes ?? []).map(normalizeMidiNote),
+    startBeat,
+    title: input.title ?? "MIDI Block",
+    type: "midi-block"
+  };
+}
+
+function normalizeAudioBlock(input: AudioBlockInput = {}): AudioBlock {
+  const startBeat = input.startBeat ?? 0;
+  const audioFile = cloneValue(input.audioFile ?? {});
+
+  return {
+    audioFile,
+    endBeat: Math.max(startBeat, input.endBeat ?? startBeat + 4),
+    id: input.id ?? createId("audio-block"),
+    loop: input.loop ?? false,
+    sourceEndSec: input.sourceEndSec ?? audioFile.durationSec ?? 0,
+    sourceStartSec: input.sourceStartSec ?? 0,
+    startBeat,
+    title: input.title ?? audioFile.fileName ?? "Audio Block",
+    type: "audio-block"
+  };
+}
+
 function normalizeMidiClip(input: MidiClipInput = {}): MidiClip {
   const clip: MidiClip = {
     id: input.id ?? createId("midi-clip"),
@@ -852,6 +917,7 @@ function normalizeTrack(
     typeof kindOrTrack === "string" ? { ...patch, kind: kindOrTrack } : kindOrTrack;
   const kind = inferTrackKind(input);
   const track: Track = {
+    Block: (input.Block ?? []).map((block) => normalizeBlock(block, kind)),
     id: input.id ?? createId("track"),
     items: (input.items ?? []).map((item) => normalizeTrackItem(item, kind)),
     kind,
