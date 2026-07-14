@@ -26,6 +26,34 @@ export function isAudioParamAutomation(
   return typeof value === "object" && value !== null && "kind" in value;
 }
 
+export function mapAudioParamValue(
+  value: AudioParamValue,
+  mapper: (value: number) => number
+): AudioParamValue {
+  if (!isAudioParamAutomation(value)) {
+    return mapper(value);
+  }
+
+  if (value.kind === "curve") {
+    return {
+      ...value,
+      values: value.values.map(mapper)
+    };
+  }
+
+  if (value.kind === "time-function") {
+    return {
+      ...value,
+      valueAt: (timeSec, progress) => mapper(value.valueAt(timeSec, progress))
+    };
+  }
+
+  return {
+    ...value,
+    valueAt: (beat, progress) => mapper(value.valueAt(beat, progress))
+  };
+}
+
 export function renderAudioAutomationCurve(
   automation: AudioParamAutomation,
   options: RenderAudioAutomationOptions = {}

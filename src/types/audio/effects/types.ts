@@ -20,7 +20,7 @@ export type AudioParamValue = AutomatableNumber;
 
 export interface FilterAudioEffect {
   type: "filter";
-  filterType: "lowpass" | "highpass";
+  filterType: "lowpass" | "highpass" | "bandpass";
   frequency: AudioParamValue;
   qFactor?: AudioParamValue;
 }
@@ -33,4 +33,23 @@ export interface CompressorAudioEffect {
   release?: AudioParamValue;
 }
 
-export type AudioEffect = FilterAudioEffect | CompressorAudioEffect;
+export interface DelayAudioEffect {
+  type: "delay";
+  delayTime: AudioParamValue;
+  feedback: AudioParamValue;
+  mix: AudioParamValue;
+}
+
+export interface ChorusAudioEffect {
+  type: "chorus";
+  delayTime: AudioParamValue;
+  depth: AudioParamValue;
+  mix: AudioParamValue;
+  rate: AudioParamValue;
+}
+
+export type AudioEffect =
+  | ChorusAudioEffect
+  | CompressorAudioEffect
+  | DelayAudioEffect
+  | FilterAudioEffect;

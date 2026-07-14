@@ -3,8 +3,16 @@ import type {
   ApplyAudioEffectsResult,
   AudioEffect
 } from "../../types/audio/effects";
+import { createChorusNode } from "./createChorusNode";
 import { createCompressorNode } from "./createCompressorNode";
+import { createDelayNode } from "./createDelayNode";
 import { createFilterNode } from "./createFilterNode";
+
+type AudioEffectGraph = {
+  input: AudioNode;
+  output: AudioNode;
+  nodes: readonly AudioNode[];
+};
 
 export function applyAudioEffects({
   audioContext,
@@ -18,15 +26,14 @@ export function applyAudioEffects({
     ...(bpm === undefined ? {} : { bpm }),
     ...(startTime === undefined ? {} : { startTime })
   };
-  const nodes = effects.map((effect) =>
-    createAudioEffectNode(effect, options)
-  );
+  const graphs = effects.map((effect) => createAudioEffectGraph(effect, options));
+  const nodes = graphs.flatMap((graph) => [...graph.nodes]);
 
   let previous: AudioNode = source;
 
-  for (const node of nodes) {
-    previous.connect(node);
-    previous = node;
+  for (const graph of graphs) {
+    previous.connect(graph.input);
+    previous = graph.output;
   }
 
   return {
@@ -36,18 +43,44 @@ export function applyAudioEffects({
   };
 }
 
-function createAudioEffectNode(
+function createAudioEffectGraph(
   effect: AudioEffect,
   options: Pick<ApplyAudioEffectsOptions, "audioContext" | "bpm" | "startTime">
-): AudioNode {
+): AudioEffectGraph {
   if (effect.type === "filter") {
-    return createFilterNode({
+    const node = createFilterNode({
+      ...options,
+      effect
+    });
+
+    return {
+      input: node,
+      nodes: [node],
+      output: node
+    };
+  }
+
+  if (effect.type === "compressor") {
+    const node = createCompressorNode({
+      ...options,
+      effect
+    });
+
+    return {
+      input: node,
+      nodes: [node],
+      output: node
+    };
+  }
+
+  if (effect.type === "delay") {
+    return createDelayNode({
       ...options,
       effect
     });
   }
 
-  return createCompressorNode({
+  return createChorusNode({
     ...options,
     effect
   });

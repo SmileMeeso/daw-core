@@ -115,6 +115,25 @@ describe("DAW", () => {
       frequency: 500,
       type: "filter"
     });
+    expect(effect.bandpass(760, { qFactor: 2 })).toEqual({
+      filterType: "bandpass",
+      frequency: 760,
+      qFactor: 2,
+      type: "filter"
+    });
+    expect(effect.delay({ delayTime: 0.3, feedback: 0.4, mix: 0.5 })).toEqual({
+      delayTime: 0.3,
+      feedback: 0.4,
+      mix: 0.5,
+      type: "delay"
+    });
+    expect(effect.chorus({ depth: 0.004, rate: 1.8 })).toEqual({
+      delayTime: 0.018,
+      depth: 0.004,
+      mix: 0.45,
+      rate: 1.8,
+      type: "chorus"
+    });
     expect(effect.limiter(-0.5)).toEqual({
       attack: 0.003,
       ratio: 20,

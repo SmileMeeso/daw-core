@@ -11,7 +11,9 @@ export type {
   AudioCurveAutomation,
   AudioParamAutomation,
   AudioParamValue,
+  ChorusAudioEffect,
   CompressorAudioEffect,
+  DelayAudioEffect,
   FilterAudioEffect,
   AudioTimeFunctionAutomation
 } from "./effects/types";
@@ -31,6 +33,16 @@ export type {
   CreateCompressorNode,
   CreateCompressorNodeOptions
 } from "./effects/createCompressorNode";
+
+export type {
+  CreateChorusNode,
+  CreateChorusNodeOptions
+} from "./effects/createChorusNode";
+
+export type {
+  CreateDelayNode,
+  CreateDelayNodeOptions
+} from "./effects/createDelayNode";
 
 export type {
   AudioSourceBufferMap,

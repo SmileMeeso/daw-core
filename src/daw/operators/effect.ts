@@ -5,8 +5,10 @@ import type {
   AudioAutomationValueAtBeat,
   AudioAutomationValueAtTime,
   AudioBeatFunctionAutomation,
+  ChorusAudioEffect,
   AudioCurveAutomation,
   CompressorAudioEffect,
+  DelayAudioEffect,
   FilterAudioEffect,
   AudioParamValue,
   AudioTimeFunctionAutomation
@@ -23,6 +25,19 @@ export type CompressorEffectOptions = {
   ratio?: AudioParamInput;
   release?: AudioParamInput;
   threshold?: AudioParamInput;
+};
+
+export type DelayEffectOptions = {
+  delayTime?: AudioParamInput;
+  feedback?: AudioParamInput;
+  mix?: AudioParamInput;
+};
+
+export type ChorusEffectOptions = {
+  delayTime?: AudioParamInput;
+  depth?: AudioParamInput;
+  mix?: AudioParamInput;
+  rate?: AudioParamInput;
 };
 
 export type TimeFunctionOptions = {
@@ -107,6 +122,25 @@ export function compressor(options: CompressorEffectOptions = {}): CompressorAud
   return effect;
 }
 
+export function chorus(options: ChorusEffectOptions = {}): ChorusAudioEffect {
+  return {
+    delayTime: toAudioParamValue(options.delayTime ?? 0.018),
+    depth: toAudioParamValue(options.depth ?? 0.006),
+    mix: toAudioParamValue(options.mix ?? 0.45),
+    rate: toAudioParamValue(options.rate ?? 1.6),
+    type: "chorus"
+  };
+}
+
+export function delay(options: DelayEffectOptions = {}): DelayAudioEffect {
+  return {
+    delayTime: toAudioParamValue(options.delayTime ?? 0.25),
+    feedback: toAudioParamValue(options.feedback ?? 0.35),
+    mix: toAudioParamValue(options.mix ?? 0.45),
+    type: "delay"
+  };
+}
+
 export function eq(
   frequency: AudioParamInput,
   filterType: FilterAudioEffect["filterType"] = "lowpass",
@@ -166,6 +200,13 @@ export function highpass(
   options: FilterEffectOptions = {}
 ): FilterAudioEffect {
   return filter("highpass", frequency, options);
+}
+
+export function bandpass(
+  frequency: AudioParamInput = 1_000,
+  options: FilterEffectOptions = {}
+): FilterAudioEffect {
+  return filter("bandpass", frequency, options);
 }
 
 export function limiter(threshold = -1): CompressorAudioEffect {
