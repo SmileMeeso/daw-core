@@ -7,6 +7,8 @@ import type { MidiNote } from "../types/midi/note";
 import type { MusicalPosition } from "../types/timeline";
 import type { AudioBlock, Block, MidiBlock, Track, TrackItem, TrackKind } from "../types/track";
 import { playDAWState } from "../audio/playDAWState";
+import { bakeDAWState } from "./serialize";
+import type { BakeAutomationOptions } from "./serialize";
 import type {
   AudioClipInput,
   AudioBlockInput,
@@ -264,6 +266,17 @@ export class DAW {
   }
 
   /**
+   * Returns a JSON-safe playback snapshot: every function-backed automation is
+   * baked into a value curve, so the result can be persisted and reloaded.
+   * Editing state is not preserved — use this for playback, not as a project file.
+   * JSON 저장이 가능한 재생용 스냅샷을 반환함. 함수 오토메이션은 값 곡선으로
+   * 구워지므로 편집 정보는 보존되지 않음.
+   */
+  save(options: BakeAutomationOptions = {}): DAWState {
+    return bakeDAWState(this.getState(), options);
+  }
+
+  /**
    * Selects an entity for later chained operations.
    * 이후 체이닝 작업을 위해 엔티티를 선택함.
    */
@@ -284,7 +297,7 @@ export class DAW {
    * 프로젝트를 JSON 친화적인 상태 객체로 변환함.
    */
   toJSON(): DAWState {
-    return this.getState();
+    return this.save();
   }
 
   /**

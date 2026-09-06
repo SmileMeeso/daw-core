@@ -77,7 +77,9 @@ export async function playDAWState(
     });
   }
 
-  await audioContext.resume();
+  if (!isOfflineAudioContext(audioContext)) {
+    await audioContext.resume();
+  }
 
   let finishTimer: ReturnType<typeof setTimeout> | undefined;
   let resolveFinished: () => void = () => undefined;
@@ -672,10 +674,19 @@ function resolveNumber(
   return firstValue ?? fallback;
 }
 
-function calculateDAWStateDurationSec(
+/**
+ * OfflineAudioContext renders on `startRendering()` and rejects `resume()`
+ * while it has never been suspended, so realtime-only steps must be skipped.
+ * 오프라인 컨텍스트는 resume() 대신 startRendering()으로 렌더링함.
+ */
+function isOfflineAudioContext(context: BaseAudioContext): boolean {
+  return typeof (context as OfflineAudioContext).startRendering === "function";
+}
+
+export function calculateDAWStateDurationSec(
   state: DAWState,
   bpm: number,
-  timeSignature: TimeSignature
+  timeSignature: TimeSignature = DEFAULT_TIME_SIGNATURE
 ): number {
   let durationSec = 0;
 

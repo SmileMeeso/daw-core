@@ -361,3 +361,106 @@ function expectAutomationValues(
 
   expect(Array.from(rendered.values)).toEqual(expected);
 }
+
+describe("DAW.save", () => {
+  it("bakes function automation into a JSON-safe curve", () => {
+    const daw = new DAW({
+      track: {
+        Block: [],
+        audioEffects: [
+          {
+            frequency: {
+              durationBeats: 4,
+              kind: "beat-function",
+              sampleCount: 5,
+              startBeat: 0,
+              valueAt: (beat: number) => 100 * beat
+            },
+            filterType: "lowpass",
+            type: "filter"
+          }
+        ],
+        id: "track-1",
+        items: [],
+        kind: "audio",
+        name: "Audio 1"
+      }
+    });
+
+    const saved = daw.save({ bpm: 120 });
+    const effectValue = saved.tracks[0]?.audioEffects?.[0];
+
+    expect(effectValue?.type).toBe("filter");
+
+    const frequency =
+      effectValue?.type === "filter" ? effectValue.frequency : undefined;
+
+    expect(typeof frequency).toBe("object");
+    expect(frequency).toMatchObject({ kind: "curve" });
+
+    const values = frequency !== undefined && typeof frequency === "object" && frequency.kind === "curve"
+      ? frequency.values
+      : [];
+
+    expect(values).toEqual([0, 100, 200, 300, 400]);
+  });
+
+  it("survives a JSON round trip without losing automation", () => {
+    const daw = new DAW({
+      track: {
+        Block: [],
+        audioEffects: [
+          {
+            delayTime: {
+              durationBeats: 2,
+              kind: "beat-function",
+              sampleCount: 3,
+              startBeat: 0,
+              valueAt: (beat: number) => beat / 10
+            },
+            feedback: 0.4,
+            mix: 0.5,
+            type: "delay"
+          }
+        ],
+        id: "track-1",
+        items: [],
+        kind: "audio",
+        name: "Audio 1"
+      }
+    });
+
+    const restored = JSON.parse(JSON.stringify(daw.save({ bpm: 120 }))) as ReturnType<
+      DAW["save"]
+    >;
+    const restoredEffect = restored.tracks[0]?.audioEffects?.[0];
+
+    expect(restoredEffect?.type).toBe("delay");
+
+    const delayTime = restoredEffect?.type === "delay" ? restoredEffect.delayTime : undefined;
+
+    expect(delayTime).toMatchObject({
+      kind: "curve",
+      values: [0, 0.1, 0.2]
+    });
+  });
+
+  it("leaves plain numbers untouched", () => {
+    const daw = new DAW({
+      track: {
+        Block: [],
+        id: "track-1",
+        items: [],
+        kind: "audio",
+        name: "Audio 1",
+        pan: 0.25,
+        volume: 0.8
+      }
+    });
+
+    const saved = daw.save();
+
+    expect(saved.tracks[0]?.volume).toBe(0.8);
+    expect(saved.tracks[0]?.pan).toBe(0.25);
+  });
+});
