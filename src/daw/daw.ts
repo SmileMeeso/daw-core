@@ -4,7 +4,7 @@ import type { AudioSource } from "../types/audio/sources";
 import type { MidiClip } from "../types/midi/clip";
 import type { MidiEffect } from "../types/midi/effects";
 import type { MidiNote } from "../types/midi/note";
-import type { MusicalPosition } from "../types/timeline";
+import type { MusicalPosition, TimeSignature } from "../types/timeline";
 import type { AudioBlock, Block, MidiBlock, Track, TrackItem, TrackKind } from "../types/track";
 import { playDAWState } from "../audio/playDAWState";
 import { bakeDAWState } from "./serialize";
@@ -25,7 +25,11 @@ import type {
   TrackInput,
   TrackItemInput
 } from "../types/daw";
-import type { DAWPlayback, PlayDAWStateOptions } from "../types/audio";
+import type {
+  AudioSourceBufferMap,
+  DAWPlayback,
+  PlayDAWStateOptions
+} from "../types/audio";
 
 type EntityLocation =
   | { kind: "clip"; clip: TrackItem; clipIndex: number; track: Track }
@@ -57,7 +61,11 @@ const DEFAULT_POSITION: MusicalPosition = {
 let nextId = 0;
 
 export class DAW {
+  private bpm: number | undefined;
+  private durationSec: number | undefined;
   private readonly id: string;
+  private playbackDefaults: PlayDAWStateOptions;
+  private timeSignature: TimeSignature | undefined;
   private currentClipId: string | undefined;
   private currentId: string;
   private currentNoteId: string | undefined;
@@ -70,6 +78,10 @@ export class DAW {
    * 선택적 초기 상태로 DAW 인스턴스를 생성함.
    */
   constructor(options: DAWOptions = {}) {
+    this.bpm = options.bpm;
+    this.durationSec = options.durationSec;
+    this.timeSignature = options.timeSignature;
+    this.playbackDefaults = options.playback ?? {};
     this.id = options.id ?? createId("daw");
     this.currentId = this.id;
 
@@ -105,8 +117,122 @@ export class DAW {
    * 현재 프로젝트 상태를 Web Audio 그래프로 렌더링하고 재생을 시작함.
    */
   play(options: PlayDAWStateOptions = {}): Promise<DAWPlayback> {
-    return playDAWState(this.getState(), options);
+    return playDAWState(this.getState(), { ...this.playbackDefaults, ...options });
   }
+
+  /** Sets the project tempo. 프로젝트 템포를 설정함. */
+  setBpm(bpm: number | undefined): this {
+    this.bpm = bpm;
+    return this;
+  }
+
+  /** Sets the project length in seconds. 프로젝트 길이를 설정함. */
+  setDuration(durationSec: number | undefined): this {
+    this.durationSec = durationSec;
+    return this;
+  }
+
+  /** Sets the project time signature. 박자를 설정함. */
+  setTimeSignature(timeSignature: TimeSignature | undefined): this {
+    this.timeSignature = timeSignature;
+    return this;
+  }
+
+  /**
+   * Replaces every track. Selection is dropped because the ids may be gone.
+   * 모든 트랙을 교체함. 선택 상태는 초기화됨.
+   */
+  setTracks(tracks: readonly TrackInput[]): this {
+    this.tracks.length = 0;
+
+    for (const track of tracks) {
+      this.internalAddTrack(track);
+    }
+
+    this.selectProject();
+
+    return this;
+  }
+
+  /**
+   * Replaces one track by id, appending it when the id is not present.
+   * id로 트랙 하나를 교체함. 없으면 추가함.
+   */
+  setTrack(id: string, track: TrackInput): this {
+    const index = this.tracks.findIndex((current) => current.id === id);
+
+    this.internalAddTrack({ ...track, id });
+
+    const added = this.tracks.pop() as Track;
+
+    if (index === -1) {
+      this.tracks.push(added);
+    } else {
+      this.tracks[index] = added;
+    }
+
+    this.selectProject();
+
+    return this;
+  }
+
+  /** Replaces every audio source. 모든 오디오 소스를 교체함. */
+  setSources(sources: readonly AudioSourceInput[]): this {
+    this.sources.length = 0;
+
+    for (const source of sources) {
+      this.internalAddSource(source);
+    }
+
+    this.selectProject();
+
+    return this;
+  }
+
+  /**
+   * Replaces one audio source by id, appending it when the id is not present.
+   * id로 오디오 소스 하나를 교체함. 없으면 추가함.
+   */
+  setSource(id: string, source: AudioSourceInput): this {
+    const index = this.sources.findIndex((current) => current.id === id);
+
+    this.internalAddSource({ ...source, id });
+
+    const added = this.sources.pop() as AudioSource;
+
+    if (index === -1) {
+      this.sources.push(added);
+    } else {
+      this.sources[index] = added;
+    }
+
+    this.selectProject();
+
+    return this;
+  }
+
+  /**
+   * Merges into the defaults applied to future `play()` calls: the audio
+   * context, decoded `sourceBuffers`, `oscillatorType`, destination node and so
+   * on. Deliberately one method rather than a setter per option, because this
+   * option set grows as the audio engine gains features while `DAWState` does
+   * not. Each call merges rather than replaces.
+   * play()에 적용될 기본값을 병합함. 옵션마다 setter를 두지 않는 이유는 이
+   * 집합이 엔진 기능에 따라 계속 늘어나기 때문임. 호출 시 병합됨.
+   */
+  setPlaybackOptions(playback: PlayDAWStateOptions): this {
+    this.playbackDefaults = { ...this.playbackDefaults, ...playback };
+    return this;
+  }
+
+  /**
+   * Gets the defaults currently applied to `play()`.
+   * play()에 적용 중인 기본값을 가져옴.
+   */
+  getPlaybackOptions(): PlayDAWStateOptions {
+    return { ...this.playbackDefaults };
+  }
+
 
   /**
    * Gets a clip by id or the current clip.
@@ -192,6 +318,9 @@ export class DAW {
    */
   getState(): DAWState {
     return {
+      ...(this.bpm !== undefined && { bpm: this.bpm }),
+      ...(this.durationSec !== undefined && { durationSec: this.durationSec }),
+      ...(this.timeSignature !== undefined && { timeSignature: this.timeSignature }),
       id: this.id,
       sources: this.getSources(),
       tracks: this.getTracks()

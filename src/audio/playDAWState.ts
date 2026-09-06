@@ -37,13 +37,18 @@ export async function playDAWState(
   options: PlayDAWStateOptions = {}
 ): Promise<DAWPlayback> {
   const audioContext = options.audioContext ?? createAudioContext();
-  const bpm = options.bpm ?? DEFAULT_BPM;
+  // Explicit options win, then whatever the project carries, then the default.
+  // 옵션 > 프로젝트 상태 > 기본값 순으로 해석함.
+  const bpm = options.bpm ?? state.bpm ?? DEFAULT_BPM;
   const destination = options.destination ?? audioContext.destination;
   const startTime =
     options.startTime ?? audioContext.currentTime + DEFAULT_SCHEDULE_OFFSET_SEC;
-  const timeSignature = options.timeSignature ?? DEFAULT_TIME_SIGNATURE;
+  const timeSignature =
+    options.timeSignature ?? state.timeSignature ?? DEFAULT_TIME_SIGNATURE;
   const durationSec =
-    options.durationSec ?? calculateDAWStateDurationSec(state, bpm, timeSignature);
+    options.durationSec ??
+    state.durationSec ??
+    calculateDAWStateDurationSec(state, bpm, timeSignature);
   const stopTime = startTime + durationSec + DEFAULT_TAIL_SEC;
   const sources = new Map(state.sources.map((source) => [source.id, source]));
   const trackGraphs = createTrackGraphs({

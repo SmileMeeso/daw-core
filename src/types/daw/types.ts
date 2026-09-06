@@ -4,7 +4,8 @@ import type { AudioSource } from "../audio/sources";
 import type { MidiClip } from "../midi/clip";
 import type { MidiEffect } from "../midi/effects";
 import type { MidiNote } from "../midi/note";
-import type { MusicalPosition } from "../timeline";
+import type { PlayDAWStateOptions } from "../audio";
+import type { MusicalPosition, TimeSignature } from "../timeline";
 import type { AudioBlock, Block, MidiBlock, Track, TrackKind, TrackItem } from "../track";
 
 export type MidiNoteInput = Partial<MidiNote>;
@@ -39,7 +40,16 @@ export type EffectInput = AudioEffect | MidiEffect | number;
 export type DAWOperator<TDAW> = (daw: TDAW) => void;
 
 export type DAWOptions = {
+  bpm?: number;
+  durationSec?: number;
   id?: string;
+  /**
+   * Defaults applied to every `play()` call. Holds what a serializable state
+   * cannot, such as decoded buffers and the audio context.
+   * play()에 매번 적용될 기본값. 직렬화 불가능한 버퍼/컨텍스트를 담음.
+   */
+  playback?: PlayDAWStateOptions;
+  timeSignature?: TimeSignature;
   source?: AudioSourceInput | readonly AudioSourceInput[];
   sources?: readonly AudioSourceInput[];
   track?: TrackInput | readonly TrackInput[];
@@ -47,8 +57,13 @@ export type DAWOptions = {
 };
 
 export type DAWState = {
+  /** Project tempo. Playback falls back to 120 when absent. 프로젝트 템포. */
+  bpm?: number;
+  /** Project length; defaults to the length of the content. 프로젝트 길이. */
+  durationSec?: number;
   id: string;
   sources: AudioSource[];
+  timeSignature?: TimeSignature;
   tracks: Track[];
 };
 

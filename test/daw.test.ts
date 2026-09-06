@@ -464,3 +464,118 @@ describe("DAW.save", () => {
     expect(saved.tracks[0]?.pan).toBe(0.25);
   });
 });
+
+describe("DAWState tempo", () => {
+  it("carries bpm, duration and time signature through getState", () => {
+    const daw = new DAW({
+      bpm: 96,
+      durationSec: 30,
+      timeSignature: [3, 4],
+      track: { Block: [], id: "t1", items: [], kind: "midi", name: "T1" }
+    });
+
+    expect(daw.getState()).toMatchObject({
+      bpm: 96,
+      durationSec: 30,
+      timeSignature: [3, 4]
+    });
+  });
+
+  it("omits tempo fields when the project does not set them", () => {
+    const state = new DAW({
+      track: { Block: [], id: "t1", items: [], kind: "midi", name: "T1" }
+    }).getState();
+
+    expect(state.bpm).toBeUndefined();
+    expect(state.durationSec).toBeUndefined();
+    expect(state.timeSignature).toBeUndefined();
+  });
+
+  it("keeps tempo through save() and a JSON round trip", () => {
+    const daw = new DAW({
+      bpm: 140,
+      durationSec: 12,
+      track: { Block: [], id: "t1", items: [], kind: "midi", name: "T1" }
+    });
+    const restored = JSON.parse(JSON.stringify(daw.save()));
+
+    expect(restored.bpm).toBe(140);
+    expect(restored.durationSec).toBe(12);
+  });
+});
+
+describe("DAW setters", () => {
+  function trackInput(id: string, name = id) {
+    return { Block: [], id, items: [], kind: "midi" as const, name };
+  }
+
+  it("setBpm, setDuration and setTimeSignature update the state", () => {
+    const daw = new DAW({ bpm: 100 });
+
+    daw.setBpm(75).setDuration(8).setTimeSignature([3, 4]);
+
+    expect(daw.getState()).toMatchObject({
+      bpm: 75,
+      durationSec: 8,
+      timeSignature: [3, 4]
+    });
+  });
+
+  it("setTracks replaces every track", () => {
+    const daw = new DAW({ track: trackInput("old") });
+
+    daw.setTracks([trackInput("a"), trackInput("b")]);
+
+    expect(daw.getTracks().map((track) => track.id)).toEqual(["a", "b"]);
+  });
+
+  it("setTrack replaces one track in place, keeping order", () => {
+    const daw = new DAW({ tracks: [trackInput("a"), trackInput("b"), trackInput("c")] });
+
+    daw.setTrack("b", trackInput("b", "Renamed"));
+
+    expect(daw.getTracks().map((track) => track.id)).toEqual(["a", "b", "c"]);
+    expect(daw.getTrack("b")?.name).toBe("Renamed");
+  });
+
+  it("setTrack appends when the id is unknown", () => {
+    const daw = new DAW({ track: trackInput("a") });
+
+    daw.setTrack("z", trackInput("z"));
+
+    expect(daw.getTracks().map((track) => track.id)).toEqual(["a", "z"]);
+  });
+
+  it("setSources replaces every source", () => {
+    const daw = new DAW();
+
+    daw.setSources([
+      { durationSec: 1, id: "s1", kind: "audio-source", uri: "a.wav" },
+      { durationSec: 2, id: "s2", kind: "audio-source", uri: "b.wav" }
+    ]);
+
+    expect(daw.getSources().map((source) => source.id)).toEqual(["s1", "s2"]);
+  });
+
+  it("setPlaybackOptions merges instead of replacing", () => {
+    const daw = new DAW();
+    const buffers = { s1: {} as AudioBuffer };
+
+    daw.setPlaybackOptions({ oscillatorType: "square" });
+    daw.setPlaybackOptions({ sourceBuffers: buffers });
+
+    // The second call must not wipe the oscillator set by the first.
+    expect(daw.getPlaybackOptions()).toEqual({
+      oscillatorType: "square",
+      sourceBuffers: buffers
+    });
+  });
+
+  it("keeps the project id across setTracks", () => {
+    const daw = new DAW({ id: "project-1", track: trackInput("a") });
+
+    daw.setTracks([]);
+
+    expect(daw.getState().id).toBe("project-1");
+  });
+});

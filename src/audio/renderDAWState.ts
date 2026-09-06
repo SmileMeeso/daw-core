@@ -32,12 +32,15 @@ export async function renderDAWState(
     throw new Error("OfflineAudioContext is not available in this environment.");
   }
 
-  const bpm = options.bpm ?? DEFAULT_BPM;
+  const bpm = options.bpm ?? state.bpm ?? DEFAULT_BPM;
   const channelCount = options.channelCount ?? DEFAULT_CHANNEL_COUNT;
   const sampleRate = options.sampleRate ?? DEFAULT_SAMPLE_RATE;
   const tailSec = options.tailSec ?? DEFAULT_TAIL_SEC;
+  const timeSignature = options.timeSignature ?? state.timeSignature;
   const durationSec =
-    options.durationSec ?? calculateDAWStateDurationSec(state, bpm, options.timeSignature);
+    options.durationSec ??
+    state.durationSec ??
+    calculateDAWStateDurationSec(state, bpm, timeSignature);
   const totalSec = Math.max(durationSec + tailSec, 1 / sampleRate);
   const offlineContext = new OfflineAudioContextConstructor(
     channelCount,

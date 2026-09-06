@@ -23,10 +23,15 @@ export function bakeDAWState(
   state: DAWState,
   options: BakeAutomationOptions = {}
 ): DAWState {
+  const bakeOptions: BakeAutomationOptions =
+    options.bpm === undefined && state.bpm !== undefined
+      ? { ...options, bpm: state.bpm }
+      : options;
+
   return {
-    id: state.id,
+    ...state,
     sources: state.sources.map((source) => ({ ...source })),
-    tracks: state.tracks.map((track) => bakeTrack(track, options))
+    tracks: state.tracks.map((track) => bakeTrack(track, bakeOptions))
   };
 }
 
